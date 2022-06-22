@@ -1,0 +1,126 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "functions": [],
+  "variables": {},
+  "resources": [
+    {
+      "name": "ubuntuVM4-PublicIP",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-11-01",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "PublicIPAddress"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[toLower('ubuntuVM4')]"
+        }
+      }
+    },
+    {
+      "name": "ubuntuVM4-NetworkInterface",
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-11-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', 'ubuntuVM4-PublicIP')]"
+      ],
+      "tags": {
+        "displayName": "ubuntuVM4-NetworkInterface"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipConfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'ubuntuVM4-PublicIP')]"
+              },
+              "subnet": {
+                "id": "YOUR SUBNET SUBSCRIPTION ID"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ubuntuVM4",
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2021-03-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces',
+         'ubuntuVM4-NetworkInterface')]"
+      ],
+      "tags": {
+        "displayName": "ubuntuVM4"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_B2s"
+        },
+        "osProfile": {
+          "computerName": "ubuntuVM4",
+          "adminUsername": "USERNAME",
+          "adminPassword": "PASSWORD",
+          // "customData" : "[base64(parameters('customData'))]"
+          "customData"  : "[base64('#cloud-config \n 
+        runcmd: \n  
+        - cd / \n  
+        - sudo touch hello.txt \n 
+        - cd /tmp\n
+        - curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null\n
+        - echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null\n
+        - sudo apt-get update\n
+        - sudo apt install default-jre -y\n
+        - sudo apt-get install jenkins --allow-unauthenticated\n
+        - sudo systemctl enable jenkins\n
+        - sudo systemctl start jenkins\n
+        - sudo apt install git\n
+        - cd /var/lib/jenkins\n
+        - sudo -u jenkins touch jenkins.install.UpgradeWizard.state\n
+        - sudo chmod 777 jenkins.install.UpgradeWizard.state\n
+        - sudo -u jenkins echo \"2.0\" >> jenkins.install.UpgradeWizard.state\n
+        - sudo -u jenkins mkdir init.groovy.d\n
+        - cd init.groovy.d\n
+        - sudo git clone YOUR REPO NAME FOR INIT.GROOVY FILE\n
+        - cd MyTestRepo\n
+        - sudo mv basic-security.groovy ..\n
+        - sudo systemctl restart jenkins\n
+        - cd /\n
+        - sudo git clone YOUR REPO NAME FOR BASIC SECURITY.GROOVY FILE\n
+        - cd MyTestRepo/\n
+        - sudo wget http://localhost:8080/jnlpJars/jenkins-cli.jar\n
+        - sudo chmod 777 jenkins-cli.jar\n
+        - sh cli-cmds.sh')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "16.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "ubuntuVM44-OSDisk",
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'ubuntuVM4-NetworkInterface')]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
